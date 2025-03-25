@@ -90,7 +90,13 @@ def link_parser(link):
                 if len(cells) == 2:
                     field = cells[0].text.strip()
                     value = cells[1].text.strip()
-                    data[field] = clean_text(value)
+
+                    if 'ФИО должника' in field:
+                        data['ФИО должника'] = value
+                    elif 'Наименование должника' in field:
+                        data['ФИО должника'] = value
+                    else:
+                        data[field] = clean_text(value)
 
     # Информация об арбитражном управляющем
     arbiter_section = soup.find('div', string="Кем опубликовано")
@@ -128,16 +134,26 @@ def link_parser(link):
                 lot_row = [td.text.strip() for td in row.find_all("td")]  # Извлекаем текст ячеек
                 lot_dict = dict(zip(headers, lot_row))
                 lot = data.copy()
+
+                lot_description = lot_dict.get("Описание", "").strip()
+                classification_text = lot_dict.get("Классификация имущества", "").strip()
+
+                if classification_text:
+                    mapped_category = determine_classification(classification_text)
+                    # Если не удалось сопоставить по колонке, пробуем по описанию
+                    if mapped_category == "Не определена" and lot_description:
+                        mapped_category = determine_classification(lot_description)
+                else:
+                    mapped_category = determine_classification(lot_description)
+
                 lot.update({
-                    "Описание": lot_dict["Описание"].strip(),
-                    "Классификация": lot_dict["Классификация имущества"].strip(),
+                    "Описание":lot_description if lot_description else "нету",
+                    "Классификация": mapped_category,
                     "Цена": lot_dict["Начальная цена, руб"].strip()
                 })
                 messages.append(lot)
 
     if "Отчет оценщика об оценке имущества должника" in title:
-        lots = []
-
         lot_section = soup.find('div', string="Сведения об объектах оценки")
         if lot_section:
             lot_table = lot_section.find_next("table")
@@ -149,12 +165,20 @@ def link_parser(link):
                     lot_row = [td.text.strip() for td in row.find_all("td")]  # Извлекаем текст ячеек
                     lot_dict = dict(zip(headers, lot_row))
                     lot = data.copy()
+                    lot_description = lot_dict.get("Описание", "").strip()
+                    classification_text = lot_dict.get("Тип", "").strip()
+                    if classification_text:
+                        mapped_category = determine_classification(classification_text)
+                        if mapped_category == "Не определена" and lot_description:
+                            mapped_category = determine_classification(lot_description)
+                    else:
+                        mapped_category = determine_classification(lot_description)
+
                     lot.update({
-                        "Описание": lot_dict["Описание"].strip(),
-                        "Классификация": lot_dict["Тип"].strip(),
-                        "Цена": lot_dict["Стоимость,определеннаяоценщиком"].strip()
+                        "Описание": lot_description if lot_description else "нету",
+                        "Классификация": mapped_category,
+                        "Цена": lot_dict.get("Стоимость,определеннаяоценщиком", "нету").strip()
                     })
                     messages.append(lot)
 
-    pprint(messages)
     return messages
