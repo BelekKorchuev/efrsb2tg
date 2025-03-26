@@ -1,6 +1,6 @@
 import asyncio
 import datetime
-import logging
+from logScript import logger
 import re
 from pprint import pprint
 
@@ -30,10 +30,6 @@ async def start_command(message: types.Message):
         "Я публикую объявления и оценки с ЕФРСБ в наш Telegram-канал.\n"
         f"Подписывайтесь: {CHANNEL_ID}"
     )
-
-def escape_md(text: str) -> str:
-    escape_chars = r'\_*[]()~`>#+-=|{}.!'
-    return ''.join(f'\\{c}' if c in escape_chars else c for c in text)
 
 def filter_messages_by_current_month(messages: list) -> list:
     """
@@ -115,12 +111,12 @@ async def send_message_to_group(message_text: str):
                 retry_after = int(m.group(1))
             else:
                 retry_after = 10  # значение по умолчанию
-            print(f"Flood control: ждем {retry_after} секунд перед повторной отправкой")
+            logger.error(f"Flood control: ждем {retry_after} секунд перед повторной отправкой")
             await asyncio.sleep(retry_after)
             # Повторяем отправку
             await send_message_to_group(message_text)
         else:
-            logging.error(f"Ошибка при отправке сообщения: {e}")
+            logger.error(f"Ошибка при отправке сообщения: {e}")
 
     except Exception as e:
         print(f"Ошибка при отправке сообщения: {e}")
@@ -133,17 +129,17 @@ async def process_unsent_links():
     # Получаем генератор записей (каждая запись: (message_id, ссылка))
     unsent_generator = fetch_unsent_links(batch_size=100)
     if unsent_generator is None:
-        logging.error("Не удалось получить данные из базы.")
+        logger.error("Не удалось получить данные из базы.")
         return
 
     for record in unsent_generator:
         message_id, link = record
-        print(f'обработка: {message_id}, {link}')
+        logger.info(f'обработка: {message_id}, {link}')
         try:
             messages = link_parser(link)
             messages = filter_messages_by_current_month(messages)
             pprint(messages)
-            print('\n\n\n')
+            logger.info('\n\n\n')
             if messages:
                 for msg  in messages:
                     message_text = build_message(msg)
@@ -153,14 +149,14 @@ async def process_unsent_links():
             # Если сообщение успешно обработано, помечаем его как отправленное
                 mark_as_sent(message_id)
         except Exception as e:
-            logging.error(f"Ошибка обработки записи {message_id} с ссылкой {link}: {e}")
+            logger.error(f"Ошибка обработки записи {message_id} с ссылкой {link}: {e}")
 
 async def main():
     while True:
         try:
             await process_unsent_links()
         except Exception as e:
-            logging.error(f"Ошибка в основном цикле: {e}")
+            logger.error(f"Ошибка в основном цикле: {e}")
         # Ждём 60 секунд перед следующей проверкой
         await asyncio.sleep(60)
 

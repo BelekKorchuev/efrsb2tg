@@ -2,7 +2,7 @@ import os
 
 import psycopg2
 from dotenv import load_dotenv
-import logging
+from logScript import logger
 load_dotenv(dotenv_path='.env')
 
 db_name = os.getenv("DB_NAME")
@@ -22,7 +22,7 @@ def get_db_connection():
         )
         return connection
     except Exception as e:
-        logging.error(f"Ошибка при подключении к базе данных: {e}")
+        logger.error(f"Ошибка при подключении к базе данных: {e}")
         return None
 
 def fetch_unsent_links(batch_size=100):
@@ -47,7 +47,7 @@ def fetch_unsent_links(batch_size=100):
                     for row in rows:
                         yield row
     except Exception as e:
-        logging.error(f"Ошибка при выполнении запроса: {e}")
+        logger.error(f"Ошибка при выполнении запроса: {e}")
         return None
 
 def mark_as_sent(message_id):
@@ -63,5 +63,5 @@ def mark_as_sent(message_id):
                         '''
                 cur.execute(query, (message_id,))
     except Exception as e:
-        logging.error(f"Ошибка при выполнении запроса: {e}")
+        logger.error(f"Ошибка при выполнении запроса: {e}")
 
