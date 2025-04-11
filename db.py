@@ -37,7 +37,7 @@ def fetch_unsent_links(batch_size=100):
                         SELECT id, сообщение_ссылка 
                         FROM messages
                         WHERE send_to_channel = FALSE 
-                          AND тип_сообщения IN ('Объявление о проведении торгов', 'Отчет оценщика об оценке имущества должника')
+                          AND тип_сообщения IN ('Аукцион', 'Публичка', 'Отчет оценщика')
                     '''
                 cur.execute(query)
                 while True:
